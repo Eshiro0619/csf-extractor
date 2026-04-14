@@ -3,7 +3,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --prefer-offline 2>/dev/null || true
+RUN npm ci
 
 COPY . .
 
