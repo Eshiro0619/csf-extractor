@@ -1,0 +1,18 @@
+# Environment
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Cache directories
+.csf_cache/
+.csf_store/
+
+# Node.js
+node_modules/
+
+# Next.js
+.next/
