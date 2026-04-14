@@ -8,7 +8,12 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from csf_extractor_v2 import compare_yearly, extract_csf_with_llm
+from csf_extractor_v2 import (
+    compare_companies,
+    compare_yearly,
+    extract_csf_with_llm,
+    load_all_companies,
+)
 
 load_dotenv()
 
@@ -132,6 +137,54 @@ def get_diff(year_from: int, year_to: int):
 
     diff = compare_yearly(result_from, result_to)
     return diff
+
+
+@app.get("/companies")
+def get_companies(year: int):
+    """指定年度に保存済みの企業一覧を返す（フロントのドロップダウン用）。"""
+    companies = load_all_companies(year)
+    return {
+        "year": year,
+        "companies": [
+            {"key": key, "label": data.get("company", key)}
+            for key, data in companies.items()
+        ],
+    }
+
+
+@app.get("/compare/{company_a}/{company_b}")
+def get_compare(company_a: str, company_b: str, year: int):
+    """2社のCSFを比較分析して結果を返す。"""
+    from dataclasses import asdict
+
+    company_a_label = company_a
+    company_b_label = company_b
+
+    # .csf_store から企業表示名を取得（存在すれば）
+    from csf_extractor_v2 import load_yearly
+    data_a = load_yearly(company_a, year)
+    data_b = load_yearly(company_b, year)
+
+    if data_a is None:
+        raise HTTPException(status_code=404, detail=f"No data for {company_a} / year {year}")
+    if data_b is None:
+        raise HTTPException(status_code=404, detail=f"No data for {company_b} / year {year}")
+
+    company_a_label = data_a.get("company", company_a)
+    company_b_label = data_b.get("company", company_b)
+
+    try:
+        result = compare_companies(
+            company_a=company_a,
+            company_b=company_b,
+            year=year,
+            company_a_label=company_a_label,
+            company_b_label=company_b_label,
+        )
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    return asdict(result)
 
 
 @app.get("/health")
